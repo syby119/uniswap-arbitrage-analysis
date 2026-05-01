@@ -48,41 +48,21 @@ def findArb(pairs, tokenIn, tokenOut, maxHops, currentPairs, path, circles):
 
 #### 1.2 套利数量
 
-我们先来回顾一下Uniswap的CFMM(constant function market maker)模型，假设现在A，B币种有一个交易池，池中A的数量为${R_0}$，B的数量为$R_1$，现在用${\Delta}_a$ 的A币种去兑换$\Delta_b$的B币种，交易手续费为$1-r$，则必须满足：
+我们先来回顾一下Uniswap的CFMM(constant function market maker)模型，假设现在A，B币种有一个交易池，池中A的数量为${R_0}$，B的数量为$R_1$，现在用${\Delta}_a$ 的A币种去兑换$\Delta_b$的B币种，交易手续费为$1-r$，则必须满足$Eq(1)$：
 
-$$(R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1\tag{1}$$
+$$(R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1$$
 
 即兑换前后$R_0R_1$保持为一个不变的常数，这也是CFMM名称的由来。
 
-那假设我们现在找到了一条环状路径A->B->C->A，如何确定用多少A来套利能获得最大利润呢？这其实是下面这样一个优化问题：
-<!-- $$
-\begin{align}
-& max  ({\Delta_a}' - \Delta_a) \\\\
-& s.t. \\
-& R_n > 0, \Delta_n > 0 \\\\
-& (R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1 \tag1 \\\\
-& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) = {R_1}'R_2 \tag2 \\\\
-& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') = {R_2}'{R_1}' \tag3
-\end{align}
-$$ -->
-
-<!-- $$
-\begin{alignedat}{3}
-&\max \quad && {\Delta_a}' - \Delta_a \\
-&\text{s.t.} && R_n > 0,\quad \Delta_n > 0 \\
-&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&= R_0R_1\\
-&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&= {R_1}'R_2\\
-&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&= {R_2}'{R_1}'
-\end{alignedat}
-$$ -->
+那假设我们现在找到了一条环状路径A->B->C->A，如何确定用多少A来套利能获得最大利润呢？这其实是下面这样一个优化问题$Eq(2)$：
 
 $$
 \begin{alignedat}{4}
 &\max \quad && {\Delta_a}' - \Delta_a \\
 &\text{s.t.} \quad && R_n > 0,\quad \Delta_n > 0 \\
-&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&= R_0R_1 \tag{2}\\
-&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&= {R_1}'R_2 \\
-&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&= {R_2}'{R_1}'
+&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&= R_0R_1 \quad(a)\\
+&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&= {R_1}'R_2 \quad(b)\\
+&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&= {R_2}'{R_1}' \quad(c)
 \end{alignedat}
 $$
 
@@ -92,36 +72,42 @@ $$
 
 假设A->C之间有个池子，参数为$E_0, E_1$，我们现在要做的就是用A->B, B->C两个池子的参数表示出$E_0, E_1$。
 
-根据上面$(2)$式中的第一个等式约束，可得：
+根据上面$Eq(2a)$，可得$Eq(3)$:
+
 $$
-\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a} \tag3
+\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a}
 $$
 
-同理，根据上面$(2)$式中的第二个等式约束，可得：
+同理，根据上面$Eq(2b)$可得$Eq(4)$:
+
 $$
-\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b} \tag4
+\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b}
 $$
 
-将$(3)$代入$(4)$得到：
+将$Eq(3)$代入$Eq(4)$得到$Eq(5)$:
+
 $$
-\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} = \frac{E_1r\Delta_a}{E_0+r\Delta_a} \tag5
+\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} = \frac{E_1r\Delta_a}{E_0+r\Delta_a}
 $$
 
-其中：
+其中, $E_0$, $E_1$定义为$Eq(6)$:
+
 $$
-E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}, \quad E_1 = \frac{rR_1R_2}{{R_1}'+R_1r} \tag6
+E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}, \quad E_1 = \frac{rR_1R_2}{{R_1}'+R_1r}
 $$
 
 这样我们就有了A->C的参数$E_0, E_1$，考虑A->B->C->A的套利路径，我们可以结合A->C的参数$E_0, E_1$和C->A的池子参数${R_2}',{R_1}'$按照上述同样的方法计算得到A->A的参数，假设为$E_a, E_b$，并由此计算出$\Delta_a'$，如果$\Delta_a < \Delta_a'$，那就说明有套利空间，否则没有。这个过程可以应用到任意长度的套利路径，对每个路径，我们都能一步一步迭代求出等效的$E_a, E_b$，并根据其大小关系判断是否有套利空间。
 
-对于A->B->C->...->A这样一条路径，我们求出了等效的$E_a, E_b$，如果存在套利空间，下一步就是计算最佳套利数量：
+对于A->B->C->...->A这样一条路径，我们求出了等效的$E_a, E_b$，如果存在套利空间，下一步就是计算最佳套利数量$Eq(7)$:
+
 $$
-f = {\Delta_a}' - \Delta_a = \frac{E_br\Delta_a}{E_a+r\Delta_a} - \Delta_a\tag{7}
+f = {\Delta_a}' - \Delta_a = \frac{E_br\Delta_a}{E_a+r\Delta_a} - \Delta_a
 $$
 
-这里的$f$就是我们的利润函数，直接求导即可，最后得到最优套利数量为：
+这里的$f$就是我们的利润函数，直接求导即可，最后得到最优套利数量为$Eq(8)$:
+
 $$
-\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}\tag{8}
+\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}
 $$
 
 我们可以直接把计算最优套利数量的过程结合到上面的dfs中，得到利润最高的路径，参考代码：
