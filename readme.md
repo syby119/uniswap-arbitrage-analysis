@@ -44,24 +44,23 @@ def findArb(pairs, tokenIn, tokenOut, maxHops, currentPairs, path, circles):
 
 Let's do a little recap on the uniswap constant function market maker(CFMM) model, assume there is  a trading pair for coin A and B, reserve for A is $R_0$, reserve for B is $R_1$, now we use ${\Delta}_a$ amount of A to trade for $\Delta_b$ amount of B, assume the fee is $1-r$, the following equation holds:
 
-$(R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1$
+$$(R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1\tag{1}$$
 
 The equation means that the product of the reserves $R_0R_1$ remains constant during the trade, this is why we call it constant function market maker.
 
 Now assume we have found a circle path: A->B->C->A, how do we find the optimal input amount? This is an optimization problem:
 
 $$
-\begin{align}
-& max  ({\Delta_a}' - \Delta_a) \\\\
-& s.t. \\
-& R_n > 0, \Delta_n > 0 \\\\
-& (R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1 \tag1 \\\\
-& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) = {R_1}'R_2 \tag2 \\\\
-& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') = {R_2}'{R_1}' \tag3
-\end{align}
+\begin{alignedat}{4}
+&\max \quad && {\Delta_a}' - \Delta_a \\
+&\text{s.t.} \quad && R_n > 0,\quad \Delta_n > 0 \\
+&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&= R_0R_1 \tag{2}\\
+&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&= {R_1}'R_2 \\
+&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&= {R_2}'{R_1}'
+\end{alignedat}
 $$
 
-Equation (1) holds during the trade from A to B, (2) holds during the trade from B to C, and (3) holds during the trade from C to A. It seems pretty simple since we only have 3 equations now, we can get the representation for ${\Delta_a}'$ in ${\Delta_a}$, then calculate the derivative of ${\Delta_a}' - \Delta_a$ to find out what the optimal ${\Delta_a}$ is.
+The first equation (1) holds during the trade from A to B, (2) holds during the trade from B to C, and (3) holds during the trade from C to A. It seems pretty simple since we only have 3 equations now, we can get the representation for ${\Delta_a}'$ in ${\Delta_a}$, then calculate the derivative of ${\Delta_a}' - \Delta_a$ to find out what the optimal ${\Delta_a}$ is.
 
 What if the path is longer? A->B->C->...->A. We need a general solution for arbitrary length path.
 
@@ -72,27 +71,22 @@ All we need to do is find the representation for $E_0, E_1$ in $R_0, R_1, {R_1}'
 According to equation(1)(2), we have:
 
 $$
-\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a} \tag4
+\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a} \tag3
 $$
 
 $$
-\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b} \tag5
+\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b} \tag4
 $$
 
-Replace $\Delta_b$ in (5) using (4), we have:
+Replace $\Delta_b$ in (4) using (3), we have:
 
 $$
-\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} \tag6
+\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} = \frac{E_1r\Delta_a}{E_0+r\Delta_a} \tag5
 $$
 
-Comparing the form of (6) and (4) or (6) and (5), we have:
-
+where
 $$
-E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}
-$$
-
-$$
-E_1 = \frac{rR_1R_2}{{R_1}'+R_1r}
+E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}, \quad E_1 = \frac{rR_1R_2}{{R_1}'+R_1r} \tag6
 $$
 
 Now we have the parameters for virtual pool A->C, consider the path A->B->C->A, with the virtual pool, the path is now: A->C->A, we can further calculate the parameters for A->A, say $E_a, E_b$, if  $E_a < E_b$, then there is an arbitrage opportunity. For arbitrary length path, we can calculate $E_a, E_b$ iteratively.
@@ -100,16 +94,13 @@ Now we have the parameters for virtual pool A->C, consider the path A->B->C->A, 
 Now we have the parameters $E_a, E_b$ for this virtual pool from A->A constructed from the given path, we have:
 
 $$
-\begin{align}
-& {\Delta_a}' = \frac{E_ar\Delta_a}{E_0+r\Delta_a} \\
-& f = {\Delta_a}' - \Delta_a
-\end{align}
+f = {\Delta_a}' - \Delta_a = \frac{E_br\Delta_a}{E_a+r\Delta_a} - \Delta_a\tag{7}
 $$
 
 Here $f$ is our profit, calculate its derivative, we can find the optimal input amount:
 
 $$
-\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}
+\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}\tag{8}
 $$
 
 Code for path finding with optimal input amount calculation:
