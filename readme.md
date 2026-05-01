@@ -42,25 +42,25 @@ def findArb(pairs, tokenIn, tokenOut, maxHops, currentPairs, path, circles):
 
 #### 1.2 Optimal input amount
 
-Let's do a little recap on the uniswap constant function market maker(CFMM) model, assume there is  a trading pair for coin A and B, reserve for A is $R_0$, reserve for B is $R_1$, now we use ${\Delta}_a$ amount of A to trade for $\Delta_b$ amount of B, assume the fee is $1-r$, the following equation holds:
+Let's do a little recap on the uniswap constant function market maker(CFMM) model, assume there is  a trading pair for coin A and B, reserve for A is $R_0$, reserve for B is $R_1$, now we use ${\Delta}_a$ amount of A to trade for $\Delta_b$ amount of B, assume the fee is $1-r$, the following equation $Eq(1)$ holds:
 
-$$(R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1\tag{1}$$
+$$ (R_0 + r\Delta_a)(R_1 - \Delta_b) = R_0R_1 $$
 
 The equation means that the product of the reserves $R_0R_1$ remains constant during the trade, this is why we call it constant function market maker.
 
-Now assume we have found a circle path: A->B->C->A, how do we find the optimal input amount? This is an optimization problem:
+Now assume we have found a circle path: A->B->C->A, how do we find the optimal input amount? This is an optimization problem $Eq(2)$:
 
 $$
 \begin{alignedat}{4}
 &\max \quad && {\Delta_a}' - \Delta_a \\
 &\text{s.t.} \quad && R_n > 0,\quad \Delta_n > 0 \\
-&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&= R_0R_1 \tag{2}\\
-&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&= {R_1}'R_2 \\
-&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&= {R_2}'{R_1}'
+&&& (R_0 + r\Delta_a)(R_1 - \Delta_b) &&&= R_0R_1 &\quad (a)\\
+&&& ({R_1}' + r\Delta_b)(R_2 - \Delta_c) &&&= {R_1}'R_2 &\quad (b)\\
+&&& ({R_2}' + r\Delta_c)(R_3 - {\Delta_a}') &&&= {R_2}'{R_1}' &\quad (c)
 \end{alignedat}
 $$
 
-The first equation (1) holds during the trade from A to B, (2) holds during the trade from B to C, and (3) holds during the trade from C to A. It seems pretty simple since we only have 3 equations now, we can get the representation for ${\Delta_a}'$ in ${\Delta_a}$, then calculate the derivative of ${\Delta_a}' - \Delta_a$ to find out what the optimal ${\Delta_a}$ is.
+The Equation $Eq(2a)$ holds during the trade from A to B, $Eq(2b)$ holds during the trade from B to C, and $Eq(2c)$ holds during the trade from C to A. It seems pretty simple since we only have 3 equations now, we can get the representation for ${\Delta_a}'$ in ${\Delta_a}$, then calculate the derivative of ${\Delta_a}' - \Delta_a$ to find out what the optimal ${\Delta_a}$ is.
 
 What if the path is longer? A->B->C->...->A. We need a general solution for arbitrary length path.
 
@@ -68,39 +68,42 @@ Consider the A->B->C situation, maybe there is not a trading pair directly from 
 
 All we need to do is find the representation for $E_0, E_1$ in $R_0, R_1, {R_1}', R_2$, i.e. the pool parameters of A->B and B->C.
 
-According to equation(1)(2), we have:
+According to $Eq(2a)$, we have $Eq(3)$:
 
 $$
-\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a} \tag3
+\Delta_b = \frac{R_1r\Delta_a}{R_0+r\Delta_a}
 $$
 
-$$
-\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b} \tag4
-$$
-
-Replace $\Delta_b$ in (4) using (3), we have:
+Similarly, according to $Eq(2b)$, we have $Eq(4)$:
 
 $$
-\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} = \frac{E_1r\Delta_a}{E_0+r\Delta_a} \tag5
+\Delta_c = \frac{R_2r\Delta_b}{{R_1}'+r\Delta_b}
 $$
 
-where
+Replace $\Delta_b$ in $Eq(4)$ using $Eq(3)$, we have $Eq(5)$:
+
 $$
-E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}, \quad E_1 = \frac{rR_1R_2}{{R_1}'+R_1r} \tag6
+\Delta_c = \frac{\frac{rR_1R_2}{{R_1}'+R_1r}r\Delta_a}{\frac{R_0{R_1}'}{{R_1}'+R_1r}+r\Delta_a} = \frac{E_1r\Delta_a}{E_0+r\Delta_a}
+$$
+
+where the following definition holds $Eq(6)$:
+
+$$
+E_0 = \frac{R_0{R_1}'}{{R_1}'+R_1r}, \quad E_1 = \frac{rR_1R_2}{{R_1}'+R_1r}
 $$
 
 Now we have the parameters for virtual pool A->C, consider the path A->B->C->A, with the virtual pool, the path is now: A->C->A, we can further calculate the parameters for A->A, say $E_a, E_b$, if  $E_a < E_b$, then there is an arbitrage opportunity. For arbitrary length path, we can calculate $E_a, E_b$ iteratively.
 
-Now we have the parameters $E_a, E_b$ for this virtual pool from A->A constructed from the given path, we have:
+Now we have the parameters $E_a, E_b$ for this virtual pool from A->A constructed from the given path, we have $Eq(7)$:
 
 $$
-f = {\Delta_a}' - \Delta_a = \frac{E_br\Delta_a}{E_a+r\Delta_a} - \Delta_a\tag{7}
+f = {\Delta_a}' - \Delta_a = \frac{E_br\Delta_a}{E_a+r\Delta_a} - \Delta_a
 $$
 
-Here $f$ is our profit, calculate its derivative, we can find the optimal input amount:
+Here $f$ is our profit, calculate its derivative, we can find the optimal input amount $Eq(8)$:
 
 $$
-\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}\tag{8}
+\Delta_a = \frac{\sqrt{E_aE_br}-E_a}{r}
 $$
 
 Code for path finding with optimal input amount calculation:
